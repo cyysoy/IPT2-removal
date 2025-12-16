@@ -1,86 +1,128 @@
 import React, { useState, useEffect } from "react";
 import ReactDOM from "react-dom";
 
-function ModernInventory() {
+const formatPrice = (price) => {
+    const num = Number(price);
+    if (isNaN(num)) return "₱0.00";
+    return "₱" + num.toFixed(2);
+};
+
+const ModernInventory = () => {
     const [products, setProducts] = useState([]);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [loading, setLoading] = useState(false);
+
+    const [editingProduct, setEditingProduct] = useState(null);
     const [formData, setFormData] = useState({
         name: "",
         description: "",
         price: "",
         quantity: "",
     });
-    const [editId, setEditId] = useState(null);
-    const [loading, setLoading] = useState(false);
-    const [searchTerm, setSearchTerm] = useState("");
-
-    const formatPrice = (price) => {
-        return parseFloat(price).toLocaleString("en-US", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-        });
-    };
 
     useEffect(() => {
         fetchProducts();
     }, []);
 
-    const fetchProducts = async (shouldLoad = true) => {
-        if (shouldLoad) setLoading(true);
+    const fetchProducts = async () => {
+        setLoading(true);
         try {
             const response = await fetch("/api/products");
             const data = await response.json();
-            const productList = data.data || [];
-            const mappedProducts = productList.map((p) => ({
-                id: p.id,
-                name: p.product_name || p.name,
-                description: p.description,
-                price: p.price,
-                quantity: p.stock_qty || p.quantity || 0,
-            }));
-            setProducts(mappedProducts);
+
+            const list = data.data || data || [];
+
+            setProducts(
+                list.map((p) => ({
+                    id: p.id,
+                    name: p.product_name || p.name,
+                    description: p.description || "",
+                    price: p.price,
+                    quantity: p.stock_qty ?? p.quantity ?? 0,
+                }))
+            );
         } catch (error) {
-            console.error("Error fetching products:", error);
+            console.error("Failed to fetch products:", error);
             setProducts([]);
         }
-        if (shouldLoad) setLoading(false);
+        setLoading(false);
     };
 
+    const filteredProducts = products.filter((product) =>
+        product.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
     const handleChange = (e) => {
+        const { name, value } = e.target;
+        setFormData((prev) => ({
+            ...prev,
+            [name]: value,
+        }));
+    };
+
+    const handleAddNew = () => {
+        setEditingProduct(null);
         setFormData({
-            ...formData,
-            [e.target.name]: e.target.value,
+            name: "",
+            description: "",
+            price: "",
+            quantity: "",
+        });
+    };
+
+    const handleEdit = (product) => {
+        setEditingProduct(product);
+        setFormData({
+            name: product.name,
+            description: product.description,
+            price: product.price,
+            quantity: product.quantity,
+        });
+    };
+
+    const handleCancel = () => {
+        setEditingProduct(null);
+        setFormData({
+            name: "",
+            description: "",
+            price: "",
+            quantity: "",
         });
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        const action = editId ? "update" : "add";
-        if (!confirm(`Are you sure you want to ${action} this product?`))
+        const isEdit = Boolean(editingProduct);
+        const actionText = isEdit ? "update" : "add";
+
+        if (!confirm(`Are you sure you want to ${actionText} this product?`))
             return;
 
         try {
-            if (editId) {
-                await fetch(`/api/products/${editId}`, {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(formData),
-                });
-                alert("Product updated successfully!");
-            } else {
-                await fetch("/api/products", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(formData),
-                });
-                alert("Product added successfully!");
+            const url = isEdit
+                ? `/api/products/${editingProduct.id}`
+                : "/api/products";
+
+            const method = isEdit ? "PUT" : "POST";
+
+            const response = await fetch(url, {
+                method,
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(formData),
+            });
+
+            if (!response.ok) {
+                throw new Error("Request failed");
             }
 
-            setFormData({ name: "", description: "", price: "", quantity: "" });
-            setEditId(null);
-            fetchProducts(false);
+            await fetchProducts();
+            handleCancel();
         } catch (error) {
-            console.error("Error saving product:", error);
+            console.error("Error submitting product:", error);
+            alert("Something went wrong while saving the product.");
         }
     };
 
@@ -89,36 +131,25 @@ function ModernInventory() {
 
         setLoading(true);
         try {
-            await fetch(`/api/products/${id}`, {
+            const response = await fetch(`/api/products/${id}`, {
                 method: "DELETE",
             });
-            alert("Product deleted successfully!");
-            fetchProducts();
+
+            if (!response.ok) {
+                throw new Error("Delete failed");
+            }
+
+            setProducts((prev) => prev.filter((p) => p.id !== id));
         } catch (error) {
             console.error("Error deleting product:", error);
+            alert("Failed to delete product.");
         }
         setLoading(false);
     };
 
-    const handleEdit = (product) => {
-        setFormData({
-            name: product.name,
-            description: product.description,
-            price: product.price,
-            quantity: product.quantity,
-        });
-        setEditId(product.id);
-    };
-
-    const handleCancel = () => {
-        setFormData({ name: "", description: "", price: "", quantity: "" });
-        setEditId(null);
-    };
-
-    const filteredProducts = products.filter((product) =>
-        product.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
+    /**
+     * Render
+     */
     return (
         <div className="container">
             <h1>Product Inventory Management</h1>
@@ -126,6 +157,7 @@ function ModernInventory() {
             <div className="product-layout">
                 <div className="product-table">
                     <h2>Product List</h2>
+
                     <input
                         type="text"
                         placeholder="Search by name"
@@ -137,14 +169,14 @@ function ModernInventory() {
                             width: "100%",
                         }}
                     />
+
                     {loading && <p>Loading...</p>}
-                    {products.length === 0 && !loading && (
-                        <p>
-                            No products available. Add your first product on the
-                            right.
-                        </p>
+
+                    {!loading && filteredProducts.length === 0 && (
+                        <p>No products found.</p>
                     )}
-                    {products.length > 0 && (
+
+                    {!loading && filteredProducts.length > 0 && (
                         <div className="table-card">
                             <table>
                                 <thead>
@@ -162,9 +194,11 @@ function ModernInventory() {
                                         <tr key={product.id}>
                                             <td>{product.id}</td>
                                             <td>{product.name}</td>
-                                            <td>{product.description}</td>
                                             <td>
-                                                ₱{formatPrice(product.price)}
+                                                {product.description || "-"}
+                                            </td>
+                                            <td>
+                                                {formatPrice(product.price)}
                                             </td>
                                             <td>{product.quantity}</td>
                                             <td>
@@ -196,7 +230,10 @@ function ModernInventory() {
                 </div>
 
                 <div className="product-form">
-                    <h2>{editId ? "Edit Product" : "Add New Product"}</h2>
+                    <h2>
+                        {editingProduct ? "Edit Product" : "Add New Product"}
+                    </h2>
+
                     <form onSubmit={handleSubmit}>
                         <input
                             type="text"
@@ -206,14 +243,15 @@ function ModernInventory() {
                             onChange={handleChange}
                             required
                         />
+
                         <input
                             type="text"
                             name="description"
                             placeholder="Description"
                             value={formData.description}
                             onChange={handleChange}
-                            required
                         />
+
                         <input
                             type="number"
                             name="price"
@@ -223,6 +261,7 @@ function ModernInventory() {
                             onChange={handleChange}
                             required
                         />
+
                         <input
                             type="number"
                             name="quantity"
@@ -231,15 +270,17 @@ function ModernInventory() {
                             onChange={handleChange}
                             required
                         />
+
                         <div className="form-buttons">
                             <button
                                 type="submit"
                                 disabled={loading}
                                 className="btn-primary"
                             >
-                                {editId ? "Update" : "Add"}
+                                {editingProduct ? "Update" : "Add"}
                             </button>
-                            {editId && (
+
+                            {editingProduct && (
                                 <button
                                     type="button"
                                     onClick={handleCancel}
@@ -254,7 +295,7 @@ function ModernInventory() {
             </div>
         </div>
     );
-}
+};
 
 export default ModernInventory;
 

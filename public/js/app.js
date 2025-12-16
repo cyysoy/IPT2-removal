@@ -66297,55 +66297,55 @@ function _arrayWithHoles(r) { if (Array.isArray(r)) return r; }
 
 
 
-function ModernInventory() {
+/**
+ * Simple peso formatter (no locale / no USD)
+ */
+
+var formatPrice = function formatPrice(price) {
+  var num = Number(price);
+  if (isNaN(num)) return "₱0.00";
+  return "₱" + num.toFixed(2);
+};
+var ModernInventory = function ModernInventory() {
   var _useState = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)([]),
     _useState2 = _slicedToArray(_useState, 2),
     products = _useState2[0],
     setProducts = _useState2[1];
-  var _useState3 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
+  var _useState3 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(""),
+    _useState4 = _slicedToArray(_useState3, 2),
+    searchTerm = _useState4[0],
+    setSearchTerm = _useState4[1];
+  var _useState5 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false),
+    _useState6 = _slicedToArray(_useState5, 2),
+    loading = _useState6[0],
+    setLoading = _useState6[1];
+  var _useState7 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(null),
+    _useState8 = _slicedToArray(_useState7, 2),
+    editingProduct = _useState8[0],
+    setEditingProduct = _useState8[1];
+  var _useState9 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)({
       name: "",
       description: "",
       price: "",
       quantity: ""
     }),
-    _useState4 = _slicedToArray(_useState3, 2),
-    formData = _useState4[0],
-    setFormData = _useState4[1];
-  var _useState5 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(null),
-    _useState6 = _slicedToArray(_useState5, 2),
-    editId = _useState6[0],
-    setEditId = _useState6[1];
-  var _useState7 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(false),
-    _useState8 = _slicedToArray(_useState7, 2),
-    loading = _useState8[0],
-    setLoading = _useState8[1];
-  var _useState9 = (0,react__WEBPACK_IMPORTED_MODULE_0__.useState)(""),
     _useState0 = _slicedToArray(_useState9, 2),
-    searchTerm = _useState0[0],
-    setSearchTerm = _useState0[1];
-  var formatPrice = function formatPrice(price) {
-    return parseFloat(price).toLocaleString("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    });
-  };
+    formData = _useState0[0],
+    setFormData = _useState0[1];
+
+  /**
+   * Fetch products on mount
+   */
   (0,react__WEBPACK_IMPORTED_MODULE_0__.useEffect)(function () {
     fetchProducts();
   }, []);
   var fetchProducts = /*#__PURE__*/function () {
     var _ref = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee() {
-      var shouldLoad,
-        response,
-        data,
-        productList,
-        mappedProducts,
-        _args = arguments,
-        _t;
+      var response, data, list, _t;
       return _regenerator().w(function (_context) {
         while (1) switch (_context.p = _context.n) {
           case 0:
-            shouldLoad = _args.length > 0 && _args[0] !== undefined ? _args[0] : true;
-            if (shouldLoad) setLoading(true);
+            setLoading(true);
             _context.p = 1;
             _context.n = 2;
             return fetch("/api/products");
@@ -66355,26 +66355,26 @@ function ModernInventory() {
             return response.json();
           case 3:
             data = _context.v;
-            productList = data.data || [];
-            mappedProducts = productList.map(function (p) {
+            list = data.data || data || [];
+            setProducts(list.map(function (p) {
+              var _ref2, _p$stock_qty;
               return {
                 id: p.id,
                 name: p.product_name || p.name,
-                description: p.description,
+                description: p.description || "",
                 price: p.price,
-                quantity: p.stock_qty || p.quantity || 0
+                quantity: (_ref2 = (_p$stock_qty = p.stock_qty) !== null && _p$stock_qty !== void 0 ? _p$stock_qty : p.quantity) !== null && _ref2 !== void 0 ? _ref2 : 0
               };
-            });
-            setProducts(mappedProducts);
+            }));
             _context.n = 5;
             break;
           case 4:
             _context.p = 4;
             _t = _context.v;
-            console.error("Error fetching products:", _t);
+            console.error("Failed to fetch products:", _t);
             setProducts([]);
           case 5:
-            if (shouldLoad) setLoading(false);
+            setLoading(false);
           case 6:
             return _context.a(2);
         }
@@ -66384,78 +66384,109 @@ function ModernInventory() {
       return _ref.apply(this, arguments);
     };
   }();
+
+  /**
+   * Filter products (same logic style as old code)
+   */
+  var filteredProducts = products.filter(function (product) {
+    return product.name.toLowerCase().includes(searchTerm.toLowerCase());
+  });
+
+  /**
+   * Handlers
+   */
   var handleChange = function handleChange(e) {
-    setFormData(_objectSpread(_objectSpread({}, formData), {}, _defineProperty({}, e.target.name, e.target.value)));
+    var _e$target = e.target,
+      name = _e$target.name,
+      value = _e$target.value;
+    setFormData(function (prev) {
+      return _objectSpread(_objectSpread({}, prev), {}, _defineProperty({}, name, value));
+    });
+  };
+  var handleAddNew = function handleAddNew() {
+    setEditingProduct(null);
+    setFormData({
+      name: "",
+      description: "",
+      price: "",
+      quantity: ""
+    });
+  };
+  var handleEdit = function handleEdit(product) {
+    setEditingProduct(product);
+    setFormData({
+      name: product.name,
+      description: product.description,
+      price: product.price,
+      quantity: product.quantity
+    });
+  };
+  var handleCancel = function handleCancel() {
+    setEditingProduct(null);
+    setFormData({
+      name: "",
+      description: "",
+      price: "",
+      quantity: ""
+    });
   };
   var handleSubmit = /*#__PURE__*/function () {
-    var _ref2 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee2(e) {
-      var action, _t2;
+    var _ref3 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee2(e) {
+      var isEdit, actionText, url, method, response, _t2;
       return _regenerator().w(function (_context2) {
         while (1) switch (_context2.p = _context2.n) {
           case 0:
             e.preventDefault();
-            action = editId ? "update" : "add";
-            if (confirm("Are you sure you want to ".concat(action, " this product?"))) {
+            isEdit = Boolean(editingProduct);
+            actionText = isEdit ? "update" : "add";
+            if (confirm("Are you sure you want to ".concat(actionText, " this product?"))) {
               _context2.n = 1;
               break;
             }
             return _context2.a(2);
           case 1:
             _context2.p = 1;
-            if (!editId) {
-              _context2.n = 3;
-              break;
-            }
+            url = isEdit ? "/api/products/".concat(editingProduct.id) : "/api/products";
+            method = isEdit ? "PUT" : "POST";
             _context2.n = 2;
-            return fetch("/api/products/".concat(editId), {
-              method: "PUT",
+            return fetch(url, {
+              method: method,
               headers: {
                 "Content-Type": "application/json"
               },
               body: JSON.stringify(formData)
             });
           case 2:
-            alert("Product updated successfully!");
-            _context2.n = 5;
-            break;
+            response = _context2.v;
+            if (response.ok) {
+              _context2.n = 3;
+              break;
+            }
+            throw new Error("Request failed");
           case 3:
             _context2.n = 4;
-            return fetch("/api/products", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json"
-              },
-              body: JSON.stringify(formData)
-            });
+            return fetchProducts();
           case 4:
-            alert("Product added successfully!");
-          case 5:
-            setFormData({
-              name: "",
-              description: "",
-              price: "",
-              quantity: ""
-            });
-            setEditId(null);
-            fetchProducts(false);
-            _context2.n = 7;
+            handleCancel();
+            _context2.n = 6;
             break;
-          case 6:
-            _context2.p = 6;
+          case 5:
+            _context2.p = 5;
             _t2 = _context2.v;
-            console.error("Error saving product:", _t2);
-          case 7:
+            console.error("Error submitting product:", _t2);
+            alert("Something went wrong while saving the product.");
+          case 6:
             return _context2.a(2);
         }
-      }, _callee2, null, [[1, 6]]);
+      }, _callee2, null, [[1, 5]]);
     }));
     return function handleSubmit(_x) {
-      return _ref2.apply(this, arguments);
+      return _ref3.apply(this, arguments);
     };
   }();
   var handleDelete = /*#__PURE__*/function () {
-    var _ref3 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee3(id) {
-      var _t3;
+    var _ref4 = _asyncToGenerator(/*#__PURE__*/_regenerator().m(function _callee3(id) {
+      var response, _t3;
       return _regenerator().w(function (_context3) {
         while (1) switch (_context3.p = _context3.n) {
           case 0:
@@ -66472,46 +66503,40 @@ function ModernInventory() {
               method: "DELETE"
             });
           case 3:
-            alert("Product deleted successfully!");
-            fetchProducts();
-            _context3.n = 5;
-            break;
+            response = _context3.v;
+            if (response.ok) {
+              _context3.n = 4;
+              break;
+            }
+            throw new Error("Delete failed");
           case 4:
-            _context3.p = 4;
+            setProducts(function (prev) {
+              return prev.filter(function (p) {
+                return p.id !== id;
+              });
+            });
+            _context3.n = 6;
+            break;
+          case 5:
+            _context3.p = 5;
             _t3 = _context3.v;
             console.error("Error deleting product:", _t3);
-          case 5:
-            setLoading(false);
+            alert("Failed to delete product.");
           case 6:
+            setLoading(false);
+          case 7:
             return _context3.a(2);
         }
-      }, _callee3, null, [[2, 4]]);
+      }, _callee3, null, [[2, 5]]);
     }));
     return function handleDelete(_x2) {
-      return _ref3.apply(this, arguments);
+      return _ref4.apply(this, arguments);
     };
   }();
-  var handleEdit = function handleEdit(product) {
-    setFormData({
-      name: product.name,
-      description: product.description,
-      price: product.price,
-      quantity: product.quantity
-    });
-    setEditId(product.id);
-  };
-  var handleCancel = function handleCancel() {
-    setFormData({
-      name: "",
-      description: "",
-      price: "",
-      quantity: ""
-    });
-    setEditId(null);
-  };
-  var filteredProducts = products.filter(function (product) {
-    return product.name.toLowerCase().includes(searchTerm.toLowerCase());
-  });
+
+  /**
+   * Render
+   */
   return /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("div", {
     className: "container",
     children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("h1", {
@@ -66536,9 +66561,9 @@ function ModernInventory() {
           }
         }), loading && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("p", {
           children: "Loading..."
-        }), products.length === 0 && !loading && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("p", {
-          children: "No products available. Add your first product on the right."
-        }), products.length > 0 && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("div", {
+        }), !loading && filteredProducts.length === 0 && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("p", {
+          children: "No products found."
+        }), !loading && filteredProducts.length > 0 && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("div", {
           className: "table-card",
           children: /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("table", {
             children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("thead", {
@@ -66565,9 +66590,9 @@ function ModernInventory() {
                   }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("td", {
                     children: product.name
                   }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("td", {
-                    children: product.description
-                  }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("td", {
-                    children: ["\u20B1", formatPrice(product.price)]
+                    children: product.description || "-"
+                  }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("td", {
+                    children: formatPrice(product.price)
                   }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("td", {
                     children: product.quantity
                   }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("td", {
@@ -66595,7 +66620,7 @@ function ModernInventory() {
       }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("div", {
         className: "product-form",
         children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("h2", {
-          children: editId ? "Edit Product" : "Add New Product"
+          children: editingProduct ? "Edit Product" : "Add New Product"
         }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsxs)("form", {
           onSubmit: handleSubmit,
           children: [/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("input", {
@@ -66610,8 +66635,7 @@ function ModernInventory() {
             name: "description",
             placeholder: "Description",
             value: formData.description,
-            onChange: handleChange,
-            required: true
+            onChange: handleChange
           }), /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("input", {
             type: "number",
             name: "price",
@@ -66633,8 +66657,8 @@ function ModernInventory() {
               type: "submit",
               disabled: loading,
               className: "btn-primary",
-              children: editId ? "Update" : "Add"
-            }), editId && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("button", {
+              children: editingProduct ? "Update" : "Add"
+            }), editingProduct && /*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)("button", {
               type: "button",
               onClick: handleCancel,
               className: "btn-outline",
@@ -66645,7 +66669,7 @@ function ModernInventory() {
       })]
     })]
   });
-}
+};
 /* harmony default export */ const __WEBPACK_DEFAULT_EXPORT__ = (ModernInventory);
 if (document.getElementById("products")) {
   react_dom__WEBPACK_IMPORTED_MODULE_1__.render(/*#__PURE__*/(0,react_jsx_runtime__WEBPACK_IMPORTED_MODULE_2__.jsx)(ModernInventory, {}), document.getElementById("products"));
